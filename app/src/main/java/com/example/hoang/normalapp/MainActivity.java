@@ -9,6 +9,7 @@ import android.support.v7.app.AppCompatActivity;
 import android.view.View;
 import android.widget.Button;
 import android.widget.CheckBox;
+import android.widget.ExpandableListView;
 import android.widget.Toast;
 
 import com.google.android.gms.maps.CameraUpdateFactory;
@@ -20,6 +21,8 @@ import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 
 public class MainActivity extends AppCompatActivity {
@@ -32,6 +35,10 @@ public class MainActivity extends AppCompatActivity {
     private CheckBox freyCheckBox;
     private CheckBox jordanCheckBox;
     private Button audioButton;
+    private HashMap<String, List<String>> categories;
+    private List<String> dropdownList;
+    private ExpandableListView expandable;
+    private expandAdapter expandAdapter;
 
 
     @Override
@@ -43,6 +50,12 @@ public class MainActivity extends AppCompatActivity {
         freyCheckBox = (CheckBox) this.findViewById(R.id.frey);
         jordanCheckBox = (CheckBox) this.findViewById(R.id.jordan);
         audioButton = (Button) this.findViewById(R.id.audioButton);
+
+        expandable = (ExpandableListView) this.findViewById(R.id.expandList);
+        categories = DataProvider.getInfo();
+        dropdownList = new ArrayList<String>(categories.keySet());
+        expandAdapter = new expandAdapter(this, categories,dropdownList);
+        expandable.setAdapter(expandAdapter);
 
         mapView.onCreate(savedInstanceState);
         mapView.onResume(); //without this, map showed but was empty
