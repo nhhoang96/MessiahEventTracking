@@ -26,6 +26,7 @@ public class expandAdapter extends BaseExpandableListAdapter {
         this.categories = categories;
         this.list = list;
     }
+
     @Override
     public int getGroupCount() {
         return list.size();

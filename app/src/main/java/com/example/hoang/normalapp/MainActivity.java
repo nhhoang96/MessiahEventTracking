@@ -1,15 +1,19 @@
 package com.example.hoang.normalapp;
 
+import android.app.Activity;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.speech.RecognizerIntent;
-import android.support.v7.app.AppCompatActivity;
 import android.view.View;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.CheckBox;
-import android.widget.ExpandableListView;
+import android.widget.EditText;
+import android.widget.RelativeLayout;
+import android.widget.Spinner;
 import android.widget.Toast;
 
 import com.google.android.gms.maps.CameraUpdateFactory;
@@ -21,24 +25,27 @@ import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
 import java.util.Locale;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends Activity {
     private MapView mapView;
     private GoogleMap map;
     private final LatLng boyer = new LatLng(40.156546, -76.989814);
     private final LatLng frey = new LatLng(40.157363, -76.987602);
     private final LatLng jordan = new LatLng(40.157875, -76.986918);
+    private RelativeLayout locationOptions;
+    private RelativeLayout dateOptions;
     private CheckBox boyerCheckBox;
     private CheckBox freyCheckBox;
     private CheckBox jordanCheckBox;
     private Button audioButton;
-    private HashMap<String, List<String>> categories;
-    private List<String> dropdownList;
-    private ExpandableListView expandable;
-    private expandAdapter expandAdapter;
+    private Spinner dropdownOptions;
+    private EditText startDate;
+    private ArrayAdapter<CharSequence> adapter;
+//    private HashMap<String, List<String>> categories;
+//    private List<String> dropdownList;
+//    private ExpandableListView expandable;
+//    private expandAdapter expandAdapter;
 
 
     @Override
@@ -46,16 +53,43 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         mapView = (MapView) this.findViewById(R.id.mapview);
+
+        locationOptions = (RelativeLayout) findViewById(R.id.locationOptions);
+        dateOptions = (RelativeLayout) findViewById(R.id.dateOptions);
+
         boyerCheckBox = (CheckBox) this.findViewById(R.id.boyer);
         freyCheckBox = (CheckBox) this.findViewById(R.id.frey);
         jordanCheckBox = (CheckBox) this.findViewById(R.id.jordan);
         audioButton = (Button) this.findViewById(R.id.audioButton);
+        startDate = (EditText) this.findViewById(R.id.startDate);
 
-        expandable = (ExpandableListView) this.findViewById(R.id.expandList);
-        categories = DataProvider.getInfo();
-        dropdownList = new ArrayList<String>(categories.keySet());
-        expandAdapter = new expandAdapter(this, categories,dropdownList);
-        expandable.setAdapter(expandAdapter);
+
+        dropdownOptions = (Spinner) this.findViewById(R.id.spinner);
+        adapter = ArrayAdapter.createFromResource(this, R.array.options,android.R.layout.simple_spinner_item);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        dropdownOptions.setAdapter(adapter);
+        dropdownOptions.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                if (position == 1) {
+                    locationOptions.setVisibility(View.VISIBLE);
+                } else if (position == 2) {
+                    dateOptions.setVisibility(View.VISIBLE);
+                    startDate.addTextChangedListener(new DateWatch(startDate));
+                }
+                Toast.makeText(getBaseContext(),parent.getItemIdAtPosition(position) + " selected", Toast.LENGTH_LONG).show();
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+
+            }
+        });
+//        expandable = (ExpandableListView) this.findViewById(R.id.expandList);
+//        categories = DataProvider.getInfo();
+//        dropdownList = new ArrayList<String>(categories.keySet());
+//        expandAdapter = new expandAdapter(this, categories, dropdownList);
+//        expandable.setAdapter(expandAdapter);
 
         mapView.onCreate(savedInstanceState);
         mapView.onResume(); //without this, map showed but was empty

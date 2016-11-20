@@ -1,3 +1,9 @@
 <resources>
     <string name="app_name">Messiah Event Seeking</string>
+    <string-array name="options">
+        <item> </item>
+        <item>Location</item>
+        <item> Date </item>
+        <item>Event Type</item>
+    </string-array>
 </resources>
