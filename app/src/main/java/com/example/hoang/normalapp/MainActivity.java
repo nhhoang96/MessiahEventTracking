@@ -73,6 +73,12 @@ public class MainActivity extends Activity {
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
                 if (position == 1) {
                     locationOptions.setVisibility(View.VISIBLE);
+                    audioButton.setOnClickListener(new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) {
+                            promptSpeechInput();
+                        }
+                    });
                 } else if (position == 2) {
                     dateOptions.setVisibility(View.VISIBLE);
                     startDate.addTextChangedListener(new DateWatch(startDate));
@@ -110,14 +116,6 @@ public class MainActivity extends Activity {
                 final Marker jordanCenter = googleMap.addMarker(new MarkerOptions().position(jordan).title("Jordan Center"));
             }
         });
-
-        audioButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                promptSpeechInput();
-            }
-        });
-
     }
 
     public void promptSpeechInput() {
