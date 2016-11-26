@@ -1,11 +1,14 @@
 package com.example.hoang.normalapp;
 
+import android.annotation.TargetApi;
 import android.app.Activity;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.speech.RecognizerIntent;
+import android.speech.tts.TextToSpeech;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
@@ -23,13 +26,22 @@ import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.gson.JsonElement;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Locale;
+import java.util.Map;
 
-public class MainActivity extends Activity {
+import ai.api.AIConfiguration;
+import ai.api.AIListener;
+import ai.api.AIService;
+import ai.api.model.AIError;
+import ai.api.model.AIResponse;
+import ai.api.model.Result;
+
+public class MainActivity extends Activity implements AIListener {
     private MapView mapView;
-    private GoogleMap map;
     private final LatLng boyer = new LatLng(40.156546, -76.989814);
     private final LatLng frey = new LatLng(40.157363, -76.987602);
     private final LatLng jordan = new LatLng(40.157875, -76.986918);
@@ -42,6 +54,11 @@ public class MainActivity extends Activity {
     private Spinner dropdownOptions;
     private EditText startDate;
     private ArrayAdapter<CharSequence> adapter;
+    private Button filterButton;
+
+    private AIService aiService;
+    private TextToSpeech t1;
+
 //    private HashMap<String, List<String>> categories;
 //    private List<String> dropdownList;
 //    private ExpandableListView expandable;
@@ -62,67 +79,143 @@ public class MainActivity extends Activity {
         jordanCheckBox = (CheckBox) this.findViewById(R.id.jordan);
         audioButton = (Button) this.findViewById(R.id.audioButton);
         startDate = (EditText) this.findViewById(R.id.startDate);
-
+        filterButton = (Button) this.findViewById(R.id.filterButton);
 
         dropdownOptions = (Spinner) this.findViewById(R.id.spinner);
         adapter = ArrayAdapter.createFromResource(this, R.array.options,android.R.layout.simple_spinner_item);
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         dropdownOptions.setAdapter(adapter);
-        dropdownOptions.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-            @Override
-            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                if (position == 1) {
-                    locationOptions.setVisibility(View.VISIBLE);
-                    audioButton.setOnClickListener(new View.OnClickListener() {
-                        @Override
-                        public void onClick(View v) {
-                            promptSpeechInput();
-                        }
-                    });
-                } else if (position == 2) {
-                    dateOptions.setVisibility(View.VISIBLE);
-                    startDate.addTextChangedListener(new DateWatch(startDate));
-                }
-                Toast.makeText(getBaseContext(),parent.getItemIdAtPosition(position) + " selected", Toast.LENGTH_LONG).show();
-            }
-
-            @Override
-            public void onNothingSelected(AdapterView<?> parent) {
-
-            }
-        });
+        dropdownOptions.setOnItemSelectedListener(new FilterOptionsAdapter());
 //        expandable = (ExpandableListView) this.findViewById(R.id.expandList);
 //        categories = DataProvider.getInfo();
 //        dropdownList = new ArrayList<String>(categories.keySet());
 //        expandAdapter = new expandAdapter(this, categories, dropdownList);
 //        expandable.setAdapter(expandAdapter);
 
-        mapView.onCreate(savedInstanceState);
-        mapView.onResume(); //without this, map showed but was empty
+        MapDisplay display = new MapDisplay(mapView, savedInstanceState);
+        display.getMap();
 
-        // Gets to GoogleMap from the MapView and does initialization stuff
-        mapView.getMapAsync(new OnMapReadyCallback() {
+        boyerCheckBox.setOnClickListener(new View.OnClickListener() {
             @Override
-            public void onMapReady(GoogleMap googleMap) {
-                googleMap.setMyLocationEnabled(true);
-                googleMap.moveCamera(CameraUpdateFactory.newLatLng(boyer));
-                googleMap.animateCamera(CameraUpdateFactory.newLatLngZoom(boyer, 15.0f));
-                googleMap.getUiSettings().setZoomControlsEnabled(true);
-                googleMap.getUiSettings().setZoomGesturesEnabled(true);
-                googleMap.getUiSettings().setAllGesturesEnabled(true);
-                //map = googleMap;
-                final Marker boyerHall = googleMap.addMarker(new MarkerOptions().position(boyer).title("Boyer Hall"));
-                final Marker freyHall = googleMap.addMarker(new MarkerOptions().position(frey).title("Frey Hall"));
-                final Marker jordanCenter = googleMap.addMarker(new MarkerOptions().position(jordan).title("Jordan Center"));
+            public void onClick(View v) {
+                if (boyerCheckBox.isChecked() == false) {
+                    boyerCheckBox.setChecked(true);
+                    mapView.getMap().moveCamera(CameraUpdateFactory.newLatLng(boyer));
+                    mapView.getMap().animateCamera(CameraUpdateFactory.newLatLngZoom(boyer, 20.0f));
+                    mapView.getMap().setIndoorEnabled(true);
+                } else {
+                    boyerCheckBox.setChecked(false);
+                    mapView.getMap().animateCamera(CameraUpdateFactory.newLatLngZoom(boyer, 15.0f));
+                }
             }
         });
+
+        freyCheckBox.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (!freyCheckBox.isChecked()) {
+                    freyCheckBox.setChecked(true);
+                    mapView.getMap().moveCamera(CameraUpdateFactory.newLatLng(frey));
+                    mapView.getMap().animateCamera(CameraUpdateFactory.newLatLngZoom(frey, 20.0f));
+                    mapView.getMap().setIndoorEnabled(true);
+                } else {
+                    freyCheckBox.setChecked(false);
+                    mapView.getMap().animateCamera(CameraUpdateFactory.newLatLngZoom(boyer, 15.0f));
+                }
+            }
+        });
+
+        jordanCheckBox.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (!jordanCheckBox.isChecked()) {
+                    jordanCheckBox.setChecked(true);
+                    mapView.getMap().moveCamera(CameraUpdateFactory.newLatLng(jordan));
+                    mapView.getMap().animateCamera(CameraUpdateFactory.newLatLngZoom(jordan, 20.0f));
+                    mapView.getMap().setIndoorEnabled(true);
+                } else {
+                    jordanCheckBox.setChecked(false);
+                    mapView.getMap().animateCamera(CameraUpdateFactory.newLatLngZoom(boyer, 15.0f));
+                }
+            }
+        });
+
+
+
+        final AIConfiguration config = new AIConfiguration("384b243aa7c148b590da67014af0be92",
+                AIConfiguration.SupportedLanguages.English,
+                AIConfiguration.RecognitionEngine.System);
+
+        aiService = AIService.getService(this, config);
+        aiService.setListener(this);
+
+        filterButton.setOnClickListener(new View.OnClickListener() {
+
+            @Override
+            public void onClick(View v) {
+                aiService.startListening();
+            }
+        });
+    }
+
+    private class FilterOptionsAdapter implements AdapterView.OnItemSelectedListener {
+        private int chosenLocation;
+
+        public FilterOptionsAdapter() {
+        }
+
+        @Override
+        public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+            if (position == 1) {
+                if (dateOptions.getVisibility() == View.VISIBLE) {
+                    dateOptions.setVisibility(View.INVISIBLE);
+                }
+                locationOptions.setVisibility(View.VISIBLE);
+                audioButton.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        promptSpeechInput();
+                    }
+                });
+            } else if (position == 2) {
+                if (locationOptions.getVisibility() == View.VISIBLE) {
+                    locationOptions.setVisibility(View.INVISIBLE);
+                }
+
+                dateOptions.setVisibility(View.VISIBLE);
+                startDate.addTextChangedListener(new DateWatch(startDate));
+            }
+            Toast.makeText(getBaseContext(),parent.getItemIdAtPosition(position) + " selected", Toast.LENGTH_LONG).show();
+            chosenLocation = (int) parent.getItemIdAtPosition(position);
+        }
+
+        @Override
+        public void onNothingSelected(AdapterView<?> parent) {
+
+        }
+
+        public int getChosenPosition() {
+            return chosenLocation;
+        }
+    }
+    @SuppressWarnings("deprecation")
+    private void speakUnder20(String text) {
+        HashMap<String, String> map = new HashMap<>();
+        map.put(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, "MessageId");
+        t1.speak(text, TextToSpeech.QUEUE_FLUSH, map);
+    }
+
+    @TargetApi(Build.VERSION_CODES.LOLLIPOP)
+    private void speakGreater21(String text) {
+        String utteranceId = this.hashCode() + "";
+        t1.speak(text, TextToSpeech.QUEUE_FLUSH, null, utteranceId);
     }
 
     public void promptSpeechInput() {
         try {
             Intent i = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
             i.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
-            i.putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault());
+            i.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "en-US");
             i.putExtra(RecognizerIntent.EXTRA_PROMPT, "Say something");
 
 
@@ -172,5 +265,65 @@ public class MainActivity extends Activity {
             }
                 break;
         }
+    }
+
+    @Override
+    public void onResult(AIResponse response) {
+        Result result = response.getResult();
+        final Result referenceRes = result;
+
+        // Get parameters
+        String parameterString = "";
+        if (result.getParameters() != null && !result.getParameters().isEmpty()) {
+            for (final Map.Entry<String, JsonElement> entry : result.getParameters().entrySet()) {
+                parameterString += "(" + entry.getKey() + ", " + entry.getValue() + ") ";
+            }
+        } else {
+            Toast.makeText(this, "NOT WORKING", Toast.LENGTH_LONG);
+        }
+
+        if (result.getResolvedQuery().contains("location")) {
+            dropdownOptions.setSelection(1);
+        } else if (result.getResolvedQuery().contains("date")) {
+            dropdownOptions.setSelection(2);
+        }
+
+        t1 = new TextToSpeech(getBaseContext(), new TextToSpeech.OnInitListener() {
+
+            @Override
+            public void onInit(int status) {
+                t1.setLanguage(Locale.US);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                    speakGreater21(referenceRes.getFulfillment().getSpeech());
+                } else {
+                    speakUnder20(referenceRes.getFulfillment().getSpeech());
+                }
+            }
+        });
+    }
+
+    @Override
+    public void onError(AIError error) {
+
+    }
+
+    @Override
+    public void onAudioLevel(float level) {
+
+    }
+
+    @Override
+    public void onListeningStarted() {
+
+    }
+
+    @Override
+    public void onListeningCanceled() {
+
+    }
+
+    @Override
+    public void onListeningFinished() {
+
     }
 }
