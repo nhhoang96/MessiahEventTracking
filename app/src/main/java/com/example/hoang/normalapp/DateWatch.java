@@ -19,6 +19,9 @@ public class DateWatch implements TextWatcher {
     public DateWatch(EditText date) {
         this.date = date;
     }
+
+    public DateWatch() {
+    }
     @Override
     public void beforeTextChanged(CharSequence s, int start, int count, int after) {
 
@@ -88,7 +91,9 @@ public class DateWatch implements TextWatcher {
 //                date.setError(null);
             }
         }
-
+    public void enterSpeechDate(String enteredDate) {
+        date.setText(enteredDate);
+    }
     @Override
     public void afterTextChanged(Editable s) {
 

@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Messiah Event Seeking</string>
+    <string name="app_name">Messiah Event Tracking</string>
     <string-array name="options">
         <item> </item>
         <item>Location</item>

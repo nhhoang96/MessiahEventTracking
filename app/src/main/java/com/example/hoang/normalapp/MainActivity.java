@@ -7,6 +7,7 @@ import android.content.Intent;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.SystemClock;
 import android.speech.RecognizerIntent;
 import android.speech.tts.TextToSpeech;
 import android.view.View;
@@ -14,18 +15,15 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.CheckBox;
+import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.RelativeLayout;
 import android.widget.Spinner;
 import android.widget.Toast;
 
 import com.google.android.gms.maps.CameraUpdateFactory;
-import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.MapView;
-import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.model.LatLng;
-import com.google.android.gms.maps.model.Marker;
-import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.gson.JsonElement;
 
 import java.util.ArrayList;
@@ -57,18 +55,14 @@ public class MainActivity extends Activity implements AIListener {
     private Button filterButton;
 
     private AIService aiService;
-    private TextToSpeech t1;
-
-//    private HashMap<String, List<String>> categories;
-//    private List<String> dropdownList;
-//    private ExpandableListView expandable;
-//    private expandAdapter expandAdapter;
-
+    private TextToSpeech speech;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
         mapView = (MapView) this.findViewById(R.id.mapview);
 
         locationOptions = (RelativeLayout) findViewById(R.id.locationOptions);
@@ -86,61 +80,25 @@ public class MainActivity extends Activity implements AIListener {
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         dropdownOptions.setAdapter(adapter);
         dropdownOptions.setOnItemSelectedListener(new FilterOptionsAdapter());
-//        expandable = (ExpandableListView) this.findViewById(R.id.expandList);
-//        categories = DataProvider.getInfo();
-//        dropdownList = new ArrayList<String>(categories.keySet());
-//        expandAdapter = new expandAdapter(this, categories, dropdownList);
-//        expandable.setAdapter(expandAdapter);
 
         MapDisplay display = new MapDisplay(mapView, savedInstanceState);
         display.getMap();
 
-        boyerCheckBox.setOnClickListener(new View.OnClickListener() {
+        boyerCheckBox.setOnCheckedChangeListener(new checkedBoxListener());
+        freyCheckBox.setOnCheckedChangeListener(new checkedBoxListener());
+        jordanCheckBox.setOnCheckedChangeListener(new checkedBoxListener());
+
+        SystemClock.sleep(1000);
+        final String gettingStarted = "Let's get started by letting us know what filter you would like to start with";
+        speech = new TextToSpeech(getBaseContext(), new TextToSpeech.OnInitListener() {
             @Override
-            public void onClick(View v) {
-                if (boyerCheckBox.isChecked() == false) {
-                    boyerCheckBox.setChecked(true);
-                    mapView.getMap().moveCamera(CameraUpdateFactory.newLatLng(boyer));
-                    mapView.getMap().animateCamera(CameraUpdateFactory.newLatLngZoom(boyer, 20.0f));
-                    mapView.getMap().setIndoorEnabled(true);
-                } else {
-                    boyerCheckBox.setChecked(false);
-                    mapView.getMap().animateCamera(CameraUpdateFactory.newLatLngZoom(boyer, 15.0f));
+            public void onInit(int status) {
+                if (status == TextToSpeech.SUCCESS) {
+                    speech.setLanguage(Locale.US);
+                    speakWords(gettingStarted);
                 }
             }
         });
-
-        freyCheckBox.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (!freyCheckBox.isChecked()) {
-                    freyCheckBox.setChecked(true);
-                    mapView.getMap().moveCamera(CameraUpdateFactory.newLatLng(frey));
-                    mapView.getMap().animateCamera(CameraUpdateFactory.newLatLngZoom(frey, 20.0f));
-                    mapView.getMap().setIndoorEnabled(true);
-                } else {
-                    freyCheckBox.setChecked(false);
-                    mapView.getMap().animateCamera(CameraUpdateFactory.newLatLngZoom(boyer, 15.0f));
-                }
-            }
-        });
-
-        jordanCheckBox.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (!jordanCheckBox.isChecked()) {
-                    jordanCheckBox.setChecked(true);
-                    mapView.getMap().moveCamera(CameraUpdateFactory.newLatLng(jordan));
-                    mapView.getMap().animateCamera(CameraUpdateFactory.newLatLngZoom(jordan, 20.0f));
-                    mapView.getMap().setIndoorEnabled(true);
-                } else {
-                    jordanCheckBox.setChecked(false);
-                    mapView.getMap().animateCamera(CameraUpdateFactory.newLatLngZoom(boyer, 15.0f));
-                }
-            }
-        });
-
-
 
         final AIConfiguration config = new AIConfiguration("384b243aa7c148b590da67014af0be92",
                 AIConfiguration.SupportedLanguages.English,
@@ -158,6 +116,47 @@ public class MainActivity extends Activity implements AIListener {
         });
     }
 
+
+    public void speakWords(String speechText) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            speakGreater21(speechText);
+        } else {
+            speakUnder20(speechText);
+        }
+    }
+
+    @SuppressWarnings("deprecation")
+    private void speakUnder20(String text) {
+        HashMap<String, String> map = new HashMap<>();
+        map.put(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, "MessageId");
+        speech.speak(text, TextToSpeech.QUEUE_FLUSH, map);
+    }
+
+    @TargetApi(Build.VERSION_CODES.LOLLIPOP)
+    private void speakGreater21(String text) {
+        String utteranceId = this.hashCode() + "";
+        speech.speak(text, TextToSpeech.QUEUE_FLUSH, null, utteranceId);
+    }
+
+    private class checkedBoxListener implements CompoundButton.OnCheckedChangeListener {
+        public checkedBoxListener() {
+
+        }
+        @Override
+        public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+            if (isChecked) {
+                if (buttonView == boyerCheckBox) {
+                    conductFilter(boyerCheckBox, mapView, boyer);
+                } else if (buttonView == freyCheckBox) {
+                    conductFilter(freyCheckBox, mapView, frey);
+                } else if (buttonView == jordanCheckBox) {
+                    conductFilter(jordanCheckBox, mapView, jordan);
+                }
+            } else {
+                mapView.getMap().animateCamera(CameraUpdateFactory.newLatLngZoom(boyer, 15.0f));
+            }
+        }
+    }
     private class FilterOptionsAdapter implements AdapterView.OnItemSelectedListener {
         private int chosenLocation;
 
@@ -198,18 +197,7 @@ public class MainActivity extends Activity implements AIListener {
             return chosenLocation;
         }
     }
-    @SuppressWarnings("deprecation")
-    private void speakUnder20(String text) {
-        HashMap<String, String> map = new HashMap<>();
-        map.put(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, "MessageId");
-        t1.speak(text, TextToSpeech.QUEUE_FLUSH, map);
-    }
 
-    @TargetApi(Build.VERSION_CODES.LOLLIPOP)
-    private void speakGreater21(String text) {
-        String utteranceId = this.hashCode() + "";
-        t1.speak(text, TextToSpeech.QUEUE_FLUSH, null, utteranceId);
-    }
 
     public void promptSpeechInput() {
         try {
@@ -221,7 +209,6 @@ public class MainActivity extends Activity implements AIListener {
 
             startActivityForResult(i, 100);
         } catch (ActivityNotFoundException a ){
-            //Toast.makeText(MainActivity.this, "Sorry, strange voice", Toast.LENGTH_LONG).show();
             String appPackageName = "com.google.android.googlequicksearchbox";
             try {
                 startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=" + appPackageName)));
@@ -239,22 +226,13 @@ public class MainActivity extends Activity implements AIListener {
                 ArrayList<String> result = i.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
                 Toast.makeText(MainActivity.this, result.get(0), Toast.LENGTH_LONG).show();
                 if (result.get(0).toLowerCase().contains("boyer")) {
-                    boyerCheckBox.setChecked(true);
-                    mapView.getMap().moveCamera(CameraUpdateFactory.newLatLng(boyer));
-                    mapView.getMap().animateCamera(CameraUpdateFactory.newLatLngZoom(boyer, 20.0f));
-                    mapView.getMap().setIndoorEnabled(true);
+                    conductFilter(boyerCheckBox,mapView, boyer);
 
                 } else if (result.get(0).toLowerCase().contains("frey")) {
-                    freyCheckBox.setChecked(true);
-                    mapView.getMap().setIndoorEnabled(true);
-                    mapView.getMap().moveCamera(CameraUpdateFactory.newLatLng(frey));
-                    mapView.getMap().animateCamera(CameraUpdateFactory.newLatLngZoom(frey, 20.0f));
+                    conductFilter(freyCheckBox,mapView, frey);
 
                 } else if (result.get(0).toLowerCase().contains("jordan")) {
-                    jordanCheckBox.setChecked(true);
-                    mapView.getMap().setIndoorEnabled(true);
-                    mapView.getMap().moveCamera(CameraUpdateFactory.newLatLng(jordan));
-                    mapView.getMap().animateCamera(CameraUpdateFactory.newLatLngZoom(jordan, 20.0f));
+                    conductFilter(jordanCheckBox,mapView, jordan);
 
                 } else if (result.get(0).toLowerCase().contains("restart")) {
                     mapView.getMap().animateCamera(CameraUpdateFactory.newLatLngZoom(boyer, 15.0f));
@@ -266,7 +244,14 @@ public class MainActivity extends Activity implements AIListener {
                 break;
         }
     }
+    public void conductFilter(CheckBox chosenCheckbox, MapView mapView, LatLng chosenLatLng) {
+        chosenCheckbox.setChecked(true);
+        mapView.getMap().setIndoorEnabled(true);
+        mapView.getMap().moveCamera(CameraUpdateFactory.newLatLng(chosenLatLng));
+        mapView.getMap().animateCamera(CameraUpdateFactory.newLatLngZoom(chosenLatLng, 20.0f));
 
+
+    }
     @Override
     public void onResult(AIResponse response) {
         Result result = response.getResult();
@@ -276,8 +261,26 @@ public class MainActivity extends Activity implements AIListener {
         String parameterString = "";
         if (result.getParameters() != null && !result.getParameters().isEmpty()) {
             for (final Map.Entry<String, JsonElement> entry : result.getParameters().entrySet()) {
+
                 parameterString += "(" + entry.getKey() + ", " + entry.getValue() + ") ";
+
+                String mappedValue = entry.getValue().toString().toLowerCase();
+
+                if (mappedValue.contains("jordan")) {
+                    conductFilter(jordanCheckBox, mapView, jordan);
+                } else if (mappedValue.contains("frey")) {
+                    conductFilter(freyCheckBox, mapView, frey);
+                } else if (mappedValue.contains("boyer")) {
+                    conductFilter(boyerCheckBox, mapView, boyer);
+                } else if (isValidDate(mappedValue)) {
+                    Toast.makeText(this, "Date accepted", Toast.LENGTH_LONG).show();
+                    String reformatedDate = reformatDate(mappedValue);
+                    DateWatch dateWatch = new DateWatch(startDate);
+                    dateWatch.enterSpeechDate(reformatedDate);
+                    conductFilter(boyerCheckBox, mapView, boyer);
+                }
             }
+
         } else {
             Toast.makeText(this, "NOT WORKING", Toast.LENGTH_LONG);
         }
@@ -288,20 +291,44 @@ public class MainActivity extends Activity implements AIListener {
             dropdownOptions.setSelection(2);
         }
 
-        t1 = new TextToSpeech(getBaseContext(), new TextToSpeech.OnInitListener() {
-
+        speech = new TextToSpeech(getBaseContext(), new TextToSpeech.OnInitListener() {
             @Override
             public void onInit(int status) {
-                t1.setLanguage(Locale.US);
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                    speakGreater21(referenceRes.getFulfillment().getSpeech());
-                } else {
-                    speakUnder20(referenceRes.getFulfillment().getSpeech());
+                if (status == TextToSpeech.SUCCESS) {
+                    speech.setLanguage(Locale.US);
+                    speakWords(referenceRes.getFulfillment().getSpeech());
                 }
             }
         });
+
+
+
     }
 
+    // Check if the date is valid or not
+    public boolean isValidDate(String inDate) {
+
+        java.text.SimpleDateFormat simpleDateFormat = new java.text.SimpleDateFormat("yyyy/MM/dd");
+        simpleDateFormat.setLenient(false);
+        if (!inDate.contains("-")) {
+            return false;
+        } else {
+            if(inDate.split("-").length >= 2) {
+                Toast.makeText(this, "Valid date", Toast.LENGTH_LONG).show();
+                return true;
+            } else {
+                Toast.makeText(this, "Invalid date", Toast.LENGTH_LONG).show();
+                return false;
+            }
+        }
+    }
+
+    public String reformatDate(String inputDate) {
+        inputDate= inputDate.trim().substring(1,inputDate.length() - 1);
+        String[] separateParts = inputDate.split("-");
+        String newDate = separateParts[1] + "/" + separateParts[2] + "/" + separateParts[0];
+        return newDate;
+    }
     @Override
     public void onError(AIError error) {
 
