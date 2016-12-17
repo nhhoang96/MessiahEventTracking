@@ -43,6 +43,7 @@ public class MainActivity extends Activity implements AIListener {
     private final LatLng boyer = new LatLng(40.156546, -76.989814);
     private final LatLng frey = new LatLng(40.157363, -76.987602);
     private final LatLng jordan = new LatLng(40.157875, -76.986918);
+
     private RelativeLayout locationOptions;
     private RelativeLayout dateOptions;
     private CheckBox boyerCheckBox;
@@ -56,6 +57,10 @@ public class MainActivity extends Activity implements AIListener {
 
     private AIService aiService;
     private TextToSpeech speech;
+
+    private final AIConfiguration config = new AIConfiguration("384b243aa7c148b590da67014af0be92",
+            AIConfiguration.SupportedLanguages.English,
+            AIConfiguration.RecognitionEngine.System);
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -100,15 +105,10 @@ public class MainActivity extends Activity implements AIListener {
             }
         });
 
-        final AIConfiguration config = new AIConfiguration("384b243aa7c148b590da67014af0be92",
-                AIConfiguration.SupportedLanguages.English,
-                AIConfiguration.RecognitionEngine.System);
-
         aiService = AIService.getService(this, config);
         aiService.setListener(this);
 
         filterButton.setOnClickListener(new View.OnClickListener() {
-
             @Override
             public void onClick(View v) {
                 aiService.startListening();
@@ -116,7 +116,7 @@ public class MainActivity extends Activity implements AIListener {
         });
     }
 
-
+    // Create text-to-speech
     public void speakWords(String speechText) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             speakGreater21(speechText);
@@ -140,7 +140,6 @@ public class MainActivity extends Activity implements AIListener {
 
     private class checkedBoxListener implements CompoundButton.OnCheckedChangeListener {
         public checkedBoxListener() {
-
         }
         @Override
         public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
@@ -157,8 +156,8 @@ public class MainActivity extends Activity implements AIListener {
             }
         }
     }
+
     private class FilterOptionsAdapter implements AdapterView.OnItemSelectedListener {
-        private int chosenLocation;
 
         public FilterOptionsAdapter() {
         }
@@ -180,25 +179,19 @@ public class MainActivity extends Activity implements AIListener {
                 if (locationOptions.getVisibility() == View.VISIBLE) {
                     locationOptions.setVisibility(View.INVISIBLE);
                 }
-
                 dateOptions.setVisibility(View.VISIBLE);
                 startDate.addTextChangedListener(new DateWatch(startDate));
             }
             Toast.makeText(getBaseContext(),parent.getItemIdAtPosition(position) + " selected", Toast.LENGTH_LONG).show();
-            chosenLocation = (int) parent.getItemIdAtPosition(position);
         }
 
         @Override
         public void onNothingSelected(AdapterView<?> parent) {
 
         }
-
-        public int getChosenPosition() {
-            return chosenLocation;
-        }
     }
 
-
+    // Google Voice Recognizer for speech to text
     public void promptSpeechInput() {
         try {
             Intent i = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
@@ -225,6 +218,7 @@ public class MainActivity extends Activity implements AIListener {
             case 100: if (result_code == RESULT_OK && i!= null) {
                 ArrayList<String> result = i.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
                 Toast.makeText(MainActivity.this, result.get(0), Toast.LENGTH_LONG).show();
+
                 if (result.get(0).toLowerCase().contains("boyer")) {
                     conductFilter(boyerCheckBox,mapView, boyer);
 
@@ -244,14 +238,17 @@ public class MainActivity extends Activity implements AIListener {
                 break;
         }
     }
+
+    // Conduct filter on the checkboxes
     public void conductFilter(CheckBox chosenCheckbox, MapView mapView, LatLng chosenLatLng) {
         chosenCheckbox.setChecked(true);
         mapView.getMap().setIndoorEnabled(true);
         mapView.getMap().moveCamera(CameraUpdateFactory.newLatLng(chosenLatLng));
         mapView.getMap().animateCamera(CameraUpdateFactory.newLatLngZoom(chosenLatLng, 20.0f));
-
-
     }
+
+
+    // API.AI Result
     @Override
     public void onResult(AIResponse response) {
         Result result = response.getResult();
@@ -265,20 +262,22 @@ public class MainActivity extends Activity implements AIListener {
                 parameterString += "(" + entry.getKey() + ", " + entry.getValue() + ") ";
 
                 String mappedValue = entry.getValue().toString().toLowerCase();
+                Toast.makeText(this, mappedValue, Toast.LENGTH_LONG).show();
+                Toast.makeText(this, entry.getKey(), Toast.LENGTH_LONG).show();
 
-                if (mappedValue.contains("jordan")) {
-                    conductFilter(jordanCheckBox, mapView, jordan);
-                } else if (mappedValue.contains("frey")) {
-                    conductFilter(freyCheckBox, mapView, frey);
-                } else if (mappedValue.contains("boyer")) {
-                    conductFilter(boyerCheckBox, mapView, boyer);
-                } else if (isValidDate(mappedValue)) {
-                    Toast.makeText(this, "Date accepted", Toast.LENGTH_LONG).show();
-                    String reformatedDate = reformatDate(mappedValue);
-                    DateWatch dateWatch = new DateWatch(startDate);
-                    dateWatch.enterSpeechDate(reformatedDate);
-                    conductFilter(boyerCheckBox, mapView, boyer);
-                }
+
+                    if (mappedValue.contains("jordan")) {
+                        conductFilter(jordanCheckBox, mapView, jordan);
+                    } else if (mappedValue.contains("frey")) {
+                        conductFilter(freyCheckBox, mapView, frey);
+                    } else if (mappedValue.contains("boyer")) {
+                        conductFilter(boyerCheckBox, mapView, boyer);
+                    } else if (isValidDate(mappedValue)) {
+                        String reformatedDate = reformatDate(mappedValue);
+                        DateWatch dateWatch = new DateWatch(startDate);
+                        dateWatch.enterSpeechDate(reformatedDate);
+                        conductFilter(boyerCheckBox, mapView, boyer);
+                    }
             }
 
         } else {
@@ -300,9 +299,6 @@ public class MainActivity extends Activity implements AIListener {
                 }
             }
         });
-
-
-
     }
 
     // Check if the date is valid or not

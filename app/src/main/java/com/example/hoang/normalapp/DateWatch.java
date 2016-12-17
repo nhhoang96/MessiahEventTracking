@@ -43,7 +43,6 @@ public class DateWatch implements TextWatcher {
                 enteredMonth = enteredVal.substring(0,1);
                 if (Integer.parseInt(enteredVal) < 1 || Integer.parseInt(enteredVal)>12) {
                     isValidMonth = false;
-                    //isValid = false;
                 } else {
                     enteredVal+="/";
                     date.setText(enteredVal);
@@ -61,7 +60,6 @@ public class DateWatch implements TextWatcher {
                 }
             }
             else if (enteredVal.length()==10 && before ==0) {
-                //enteredVal.sub
                 enteredYear = enteredVal.substring(6);
                 int currentYear = Calendar.getInstance().get(Calendar.YEAR);
                 if (Integer.parseInt(enteredYear) > 2016) {
@@ -87,8 +85,6 @@ public class DateWatch implements TextWatcher {
                 date.setError("Enter a valid date: YYYY");
                 date.setText(enteredVal.substring(0,6));
                 date.setSelection(6);
-//            } else {
-//                date.setError(null);
             }
         }
     public void enterSpeechDate(String enteredDate) {
